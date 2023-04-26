@@ -5,9 +5,45 @@
 struct cpui_info {
 	uint32_t cpuid_max;
 	char vendor_string[13];
+
+	uint8_t family;
+	uint8_t model;
+	uint8_t stepping;
 };
 
 static struct cpui_info __cpu;
+
+static uint8_t get_family(uint32_t verinfo)
+{
+	uint8_t display_family;
+
+	display_family = (verinfo >> 8) & 0xf;
+
+	/* Examine Extended Family ID */
+	if (display_family == 0x0f)
+		display_family += (verinfo >> 20) & 0xff;
+
+	return display_family;
+}
+
+static uint8_t get_model(uint32_t verinfo)
+{
+	uint8_t family, display_model;
+
+	family = get_family(verinfo);
+	display_model = (verinfo >> 4) & 0xf;
+
+	/* Examine Extended Model ID */
+	if (family == 0x06 || family == 0x0f)
+		display_model += ((verinfo >> 16) & 0xf) << 4;
+
+	return display_model;
+}
+
+static uint8_t get_stepping(uint32_t verinfo)
+{
+	return verinfo & 0xf;
+}
 
 static void detect_cpu(struct cpui_info *cpu)
 {
@@ -17,6 +53,15 @@ static void detect_cpu(struct cpui_info *cpu)
 		(unsigned int *)&cpu->vendor_string[8],
 		(unsigned int *)&cpu->vendor_string[4]);
 	cpu->vendor_string[12] = '\0';
+
+	if (cpu->cpuid_max >= 0x01) {
+		uint32_t eax, ebx, ecx, edx;
+
+		cpuid(0x01, &eax, &ebx, &ecx, &edx);
+		cpu->family	= get_family(eax);
+		cpu->model	= get_model(eax);
+		cpu->stepping	= get_stepping(eax);
+	}
 }
 
 static int __init cpui_init(void)
