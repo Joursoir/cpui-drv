@@ -2,6 +2,17 @@
 
 #include <linux/module.h>
 
+enum feature_information {
+	FEATURES_01_ECX		= 0,
+	FEATURES_01_EDX,
+	FEATURES_6_EAX,
+	FEATURES_7_0_EBX,
+	FEATURES_7_ECX,
+	FEATURES_7_EDX,
+	FEATURES_7_1_EAX,
+	FEATURES_LAST,
+};
+
 struct cpui_info {
 	uint32_t cpuid_max;
 	char vendor_string[13];
@@ -9,6 +20,8 @@ struct cpui_info {
 	uint8_t family;
 	uint8_t model;
 	uint8_t stepping;
+
+	uint32_t features[FEATURES_LAST];
 };
 
 static struct cpui_info __cpu;
@@ -64,6 +77,36 @@ static void detect_cpu(struct cpui_info *cpu)
 	}
 }
 
+static void get_cpu_features(struct cpui_info *cpu)
+{
+	uint32_t eax, ebx, ecx, edx;
+
+	if (cpu->cpuid_max >= 0x01) {
+		cpuid(0x01, &eax, &ebx, &ecx, &edx);
+		cpu->features[FEATURES_01_ECX] = ecx;
+		cpu->features[FEATURES_01_EDX] = edx;
+	}
+
+	/* Thermal and Power Management Leaf */
+	if (cpu->cpuid_max >= 0x06) {
+		cpuid(0x01, &eax, &ebx, &ecx, &edx);
+		cpu->features[FEATURES_6_EAX] = eax;
+	}
+
+	/* Structured Extended Feature Flags Enumeration Leaf */
+	if (cpu->cpuid_max >= 0x07) {
+		cpuid_count(0x07, 0, &eax, &ebx, &ecx, &edx);
+		cpu->features[FEATURES_7_0_EBX] = ebx;
+		cpu->features[FEATURES_7_ECX] = ecx;
+		cpu->features[FEATURES_7_EDX] = edx;
+
+		if (eax >= 1) {
+			cpuid_count(0x07, 1, &eax, &ebx, &ecx, &edx);
+			cpu->features[FEATURES_7_1_EAX] = eax;
+		}
+	}
+}
+
 static int __init cpui_init(void)
 {
 	if (!have_cpuid_p()) {
@@ -76,6 +119,8 @@ static int __init cpui_init(void)
 	detect_cpu(&__cpu);
 	pr_info("Maximum Input Value for Basic CPUID Information = %d\n", __cpu.cpuid_max);
 	pr_info("Identity string = %s\n", __cpu.vendor_string);
+
+	get_cpu_features(&__cpu);
 	return 0;
 }
 
