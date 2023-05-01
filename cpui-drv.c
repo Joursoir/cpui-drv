@@ -10,11 +10,14 @@ enum feature_information {
 	FEATURES_7_ECX,
 	FEATURES_7_EDX,
 	FEATURES_7_1_EAX,
+	FEATURES_8000_0001_ECX,
+	FEATURES_8000_0001_EDX,
 	FEATURES_LAST,
 };
 
 struct cpui_info {
 	uint32_t cpuid_max;
+	uint32_t ext_cpuid_max;
 	char vendor_string[13];
 
 	uint8_t family;
@@ -104,6 +107,17 @@ static void get_cpu_features(struct cpui_info *cpu)
 			cpuid_count(0x07, 1, &eax, &ebx, &ecx, &edx);
 			cpu->features[FEATURES_7_1_EAX] = eax;
 		}
+	}
+
+	/* Get Maximum Input Value for Extended Function CPUID Information */
+	cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
+	cpu->ext_cpuid_max = eax;
+
+	if (cpu->ext_cpuid_max >= 0x80000001) {
+		cpuid(0x80000001, &eax, &ebx, &ecx, &edx);
+
+		cpu->features[FEATURES_8000_0001_ECX] = ecx;
+		cpu->features[FEATURES_8000_0001_EDX] = edx;
 	}
 }
 
