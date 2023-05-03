@@ -15,6 +15,76 @@ enum feature_information {
 	FEATURES_LAST,
 };
 
+#define FEATURE_SSE3		(0 + FEATURES_01_ECX*32)
+#define FEATURE_PCLMUL		(1 + FEATURES_01_ECX*32)
+#define FEATURE_DTES64		(2 + FEATURES_01_ECX*32)
+#define FEATURE_MONITOR		(3 + FEATURES_01_ECX*32)
+#define FEATURE_DS_CPL		(4 + FEATURES_01_ECX*32)
+#define FEATURE_VMX		(5 + FEATURES_01_ECX*32)
+#define FEATURE_SMX		(6 + FEATURES_01_ECX*32)
+#define FEATURE_EIST		(7 + FEATURES_01_ECX*32)
+#define FEATURE_TM2		(8 + FEATURES_01_ECX*32)
+#define FEATURE_SSSE3		(9 + FEATURES_01_ECX*32)
+#define FEATURE_CNXT_ID		(10 + FEATURES_01_ECX*32)
+#define FEATURE_SDBG		(11 + FEATURES_01_ECX*32)
+#define FEATURE_FMA		(12 + FEATURES_01_ECX*32)
+#define FEATURE_CMPXCHG16B	(13 + FEATURES_01_ECX*32)
+#define FEATURE_XTPR		(14 + FEATURES_01_ECX*32)
+#define FEATURE_PDCM		(15 + FEATURES_01_ECX*32)
+#define FEATURE_PCID		(17 + FEATURES_01_ECX*32)
+#define FEATURE_DCA		(18 + FEATURES_01_ECX*32)
+#define FEATURE_SSE4_1		(19 + FEATURES_01_ECX*32)
+#define FEATURE_SSE4_2		(20 + FEATURES_01_ECX*32)
+#define FEATURE_X2APIC		(21 + FEATURES_01_ECX*32)
+#define FEATURE_MOVBE		(22 + FEATURES_01_ECX*32)
+#define FEATURE_POPCNT		(23 + FEATURES_01_ECX*32)
+#define FEATURE_TSCD		(24 + FEATURES_01_ECX*32) /* TSC-Deadline */
+#define FEATURE_AES		(25 + FEATURES_01_ECX*32)
+#define FEATURE_XSAVE		(26 + FEATURES_01_ECX*32)
+#define FEATURE_OSXSAVE		(27 + FEATURES_01_ECX*32)
+#define FEATURE_AVX		(28 + FEATURES_01_ECX*32)
+#define FEATURE_F16C		(29 + FEATURES_01_ECX*32)
+#define FEATURE_RDRAND		(30 + FEATURES_01_ECX*32)
+
+#define FEATURE_FPU		(0 + FEATURES_01_EDX*32)
+#define FEATURE_VME		(1 + FEATURES_01_EDX*32)
+#define FEATURE_DE		(2 + FEATURES_01_EDX*32)
+#define FEATURE_PSE		(3 + FEATURES_01_EDX*32)
+#define FEATURE_TSC		(4 + FEATURES_01_EDX*32) /* Time Stamp Counter */
+#define FEATURE_MSR		(5 + FEATURES_01_EDX*32)
+#define FEATURE_PAE		(6 + FEATURES_01_EDX*32)
+#define FEATURE_MCE		(7 + FEATURES_01_EDX*32)
+#define FEATURE_CX8		(8 + FEATURES_01_EDX*32)
+#define FEATURE_APIC		(9 + FEATURES_01_EDX*32)
+#define FEATURE_SEP		(11 + FEATURES_01_EDX*32)
+#define FEATURE_MTRR		(12 + FEATURES_01_EDX*32)
+#define FEATURE_PGE		(13 + FEATURES_01_EDX*32)
+#define FEATURE_MCA		(14 + FEATURES_01_EDX*32)
+#define FEATURE_CMOV		(15 + FEATURES_01_EDX*32)
+#define FEATURE_PAT		(16 + FEATURES_01_EDX*32)
+#define FEATURE_PSE36		(17 + FEATURES_01_EDX*32)
+#define FEATURE_PSN		(18 + FEATURES_01_EDX*32)
+#define FEATURE_CLFLUSH		(19 + FEATURES_01_EDX*32)
+#define FEATURE_DS		(21 + FEATURES_01_EDX*32)
+#define FEATURE_ACPI		(22 + FEATURES_01_EDX*32)
+#define FEATURE_MMX		(23 + FEATURES_01_EDX*32)
+#define FEATURE_FXSR		(24 + FEATURES_01_EDX*32)
+#define FEATURE_SSE		(25 + FEATURES_01_EDX*32)
+#define FEATURE_SSE2		(26 + FEATURES_01_EDX*32)
+#define FEATURE_SS		(27 + FEATURES_01_EDX*32)
+#define FEATURE_HTT		(28 + FEATURES_01_EDX*32)
+#define FEATURE_TM		(29 + FEATURES_01_EDX*32)
+#define FEATURE_PBE		(31 + FEATURES_01_EDX*32)
+
+#define FEATURE_SYSCALL		(11 + FEATURES_8000_0001_EDX*32)
+#define FEATURE_EXECD		(20 + FEATURES_8000_0001_EDX*32)
+#define FEATURE_GBPAGES		(26 + FEATURES_8000_0001_EDX*32)
+#define FEATURE_RDTSCP		(27 + FEATURES_8000_0001_EDX*32)
+#define FEATURE_LM		(29 + FEATURES_8000_0001_EDX*32)
+
+#define test_cpu_feat(c, bit) \
+	 arch_test_bit(bit, (unsigned long *)((c)->features))
+
 struct cpui_info {
 	uint32_t cpuid_max;
 	uint32_t ext_cpuid_max;
@@ -123,6 +193,8 @@ static void get_cpu_features(struct cpui_info *cpu)
 
 static int __init cpui_init(void)
 {
+	struct cpui_info *cpu;
+
 	if (!have_cpuid_p()) {
 		pr_err("CPUID instruction is NOT supported. Aborting.\n");
 		return 1;
@@ -130,11 +202,12 @@ static int __init cpui_init(void)
 	pr_info("CPUID instruction is supported.\n");
 
 	memset(&__cpu, 0, sizeof(__cpu));
-	detect_cpu(&__cpu);
-	pr_info("Maximum Input Value for Basic CPUID Information = %d\n", __cpu.cpuid_max);
-	pr_info("Identity string = %s\n", __cpu.vendor_string);
+	cpu = &__cpu;
+	detect_cpu(cpu);
+	pr_info("Maximum Input Value for Basic CPUID Information = %d\n", cpu->cpuid_max);
+	pr_info("Identity string = %s\n", cpu->vendor_string);
 
-	get_cpu_features(&__cpu);
+	get_cpu_features(cpu);
 	return 0;
 }
 
