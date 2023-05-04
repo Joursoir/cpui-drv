@@ -1,6 +1,7 @@
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
 #include <linux/module.h>
+#include <asm/msr.h>
 
 enum feature_information {
 	FEATURES_01_ECX		= 0,
@@ -193,6 +194,7 @@ static void get_cpu_features(struct cpui_info *cpu)
 
 static int __init cpui_init(void)
 {
+	uint64_t value;
 	struct cpui_info *cpu;
 
 	if (!have_cpuid_p()) {
@@ -208,6 +210,23 @@ static int __init cpui_init(void)
 	pr_info("Identity string = %s\n", cpu->vendor_string);
 
 	get_cpu_features(cpu);
+
+	if (!test_cpu_feat(cpu, FEATURE_MSR)) {
+		pr_err("The RDMSR and WRMSR instructions are NOT supported. Aborting.\n");
+		return 1;
+	}
+
+	/* Check if IA32_EFER is present */
+	if (test_cpu_feat(cpu, FEATURE_EXECD) || test_cpu_feat(cpu, FEATURE_LM)) {
+		rdmsrl(MSR_EFER, value);
+		pr_info("IA32_EFER = 0x%016llx\n", value);
+		pr_info("\tIA32_EFER.SCE (System Call Extensions) = %llu\n", (value & EFER_SCE) >> _EFER_SCE);
+		pr_info("\tIA32_EFER.LME (Long Mode Enable) = %llu\n", (value & EFER_LME) >> _EFER_LME);
+		pr_info("\tIA32_EFER.LMA (Long Mode Active) = %llu\n", (value & EFER_LMA) >> _EFER_LMA);
+		pr_info("\tIA32_EFER.NXE (No-Execute Enable) = %llu\n", (value & EFER_NX) >> _EFER_NX);
+		pr_info("\tIA32_EFER.SVME (Secure Virtual Machine Enable) = %llu\n", (value & EFER_SVME) >> _EFER_SVME);
+		pr_info("\tIA32_EFER.LMSLE (Long Mode Segment Limit Enable) = %llu\n", (value & EFER_LMSLE) >> _EFER_LMSLE);
+	}
 	return 0;
 }
 
